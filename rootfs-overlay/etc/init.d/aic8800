@@ -1,0 +1,25 @@
+#!/sbin/openrc-run
+# AIC8800DC Wi-Fi (out-of-tree radxa-pkg/aic8800 SDIO driver). Loading is asynchronous (firmware
+# upload over SDIO), so wait for wlan0 before declaring the service started; wpa_supplicant
+# needs this service.
+description="AIC8800DC Wi-Fi driver"
+
+depend() {
+	need localmount
+	before wpa_supplicant networking
+}
+
+start() {
+	ebegin "Loading AIC8800 Wi-Fi driver"
+	modprobe aic8800_fdrv || { eend 1 "modprobe failed"; return 1; }
+	i=0
+	while [ ! -e /sys/class/net/wlan0 ] && [ $i -lt 50 ]; do sleep 0.2; i=$((i + 1)); done
+	[ -e /sys/class/net/wlan0 ] || { eend 1 "wlan0 did not appear"; return 1; }
+	# The driver randomizes the MAC tail every boot (no MAC in the chip), so the router sees a new
+	# device and hands out a new IP. Pin it (see /etc/conf.d/aic8800).
+	if [ -n "$WLAN_MAC" ]; then
+		ip link set wlan0 down && ip link set wlan0 address "$WLAN_MAC" || ewarn "could not set MAC $WLAN_MAC"
+	fi
+	iw dev wlan0 set power_save off 2>/dev/null
+	eend 0
+}

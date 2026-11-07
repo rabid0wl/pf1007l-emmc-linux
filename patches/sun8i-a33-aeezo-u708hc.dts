@@ -1,0 +1,144 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * AEEZO 10.1" digital photo frame, YHK "A33-Tablet" board, sys_config machine U708HC.
+ * Pin/voltage values come from the vendor sys_config dump (lcd0_para, ctp_para, mmc0_para,
+ * power_sply); the panel is a JD9365 that matches the Chongzhou CZ101B4001 init table.
+ *
+ * The AIC8800DC Wi-Fi (mmc1) uses the out-of-tree radxa-pkg/aic8800 SDIO driver.
+ */
+
+/dts-v1/;
+#include "sun8i-a33.dtsi"
+#include "sunxi-reference-design-tablet.dtsi"
+#include "sun8i-reference-design-tablet.dtsi"
+
+/ {
+	model = "AEEZO U708HC A33 Photo Frame";
+	compatible = "aeezo,u708hc", "allwinner,sun8i-a33";
+
+	aliases {
+		serial0 = &r_uart;
+	};
+
+	/* vendor wifi_para: AIC8800DC on SDIO mmc1, wl_reg_on = PL6 (high = on) */
+	wifi_pwrseq: pwrseq {
+		compatible = "mmc-pwrseq-simple";
+		reset-gpios = <&r_pio 0 6 GPIO_ACTIVE_LOW>; /* PL6 */
+		post-power-on-delay-ms = <200>;
+	};
+};
+
+/* vendor: lcd_pwm_freq 50000 Hz, lcd_pwm_pol 0 */
+&backlight {
+	pwms = <&pwm 0 20000 0>;
+};
+
+&de {
+	status = "okay";
+};
+
+&dphy {
+	status = "okay";
+};
+
+&dsi {
+	vcc-dsi-supply = <&reg_dcdc1>;
+	status = "okay";
+
+	panel@0 {
+		compatible = "aeezo,u708hc-panel", "jadard,jd9365da-h3";
+		reg = <0>;
+		vdd-supply = <&reg_dc1sw>;	/* vendor lcd_power */
+		vccio-supply = <&reg_eldo3>;	/* vendor lcd_power1 */
+		reset-gpios = <&pio 7 7 GPIO_ACTIVE_LOW>; /* PH7, vendor lcd_gpio_0 */
+		backlight = <&backlight>;
+	};
+};
+
+/*
+ * AIC8800DC Wi-Fi (out-of-tree aic8800 SDIO driver). Capped like the eMMC until the bus is proven
+ * at higher rates on this board.
+ */
+&mmc1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&mmc1_pg_pins>;
+	vmmc-supply = <&reg_dldo1>;
+	mmc-pwrseq = <&wifi_pwrseq>;
+	bus-width = <4>;
+	non-removable;
+	max-frequency = <12500000>;
+	status = "okay";
+};
+
+/* vendor card2_boot_para: 4-bit eMMC on PC5 (clk), PC6 (cmd), PC8-PC11 (d0-d3) */
+&mmc2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&mmc2_4bit_pins_aeezo>;
+	vmmc-supply = <&reg_dcdc1>;
+	bus-width = <4>;
+	non-removable;
+	allwinner,no-ddr;	/* DDR52 reads hang on this board; local sunxi-mmc patch */
+	/*
+	 * Writes fail at 25MHz and up with the generic A20 delay-chain phases (wtest 2026-11-04:
+	 * 400kHz and 12.5MHz write+read-back OK, 25MHz data error and the card wedges).
+	 */
+	max-frequency = <12500000>;
+	status = "okay";
+};
+
+&pio {
+	mmc2_4bit_pins_aeezo: mmc2-4bit-pins-aeezo {
+		pins = "PC5", "PC6", "PC8", "PC9", "PC10", "PC11";
+		function = "mmc2";
+		drive-strength = <30>;
+		bias-pull-up;
+	};
+};
+
+/* vendor dcdc1_vol 3300 (reference design runs 3.0V) */
+&reg_dcdc1 {
+	regulator-min-microvolt = <3300000>;
+	regulator-max-microvolt = <3300000>;
+	regulator-name = "vcc-3v3";
+};
+
+/* vendor eldo3_vol 3300 */
+&reg_eldo3 {
+	regulator-min-microvolt = <3300000>;
+	regulator-max-microvolt = <3300000>;
+	regulator-name = "vcc-lcd-io";
+};
+
+&tcon0 {
+	status = "okay";
+};
+
+/*
+ * vendor ctp_para: gsl_m86_hd on twi0 @0x40, INT PB5, wake PH1 (both from the reference
+ * dtsi), powered from axp22_ldoio1 at 3.3V. Firmware is GSLX680_FW_M86HD from gslX680new.ko.
+ */
+&touchscreen {
+	compatible = "silead,gsl1680";
+	vddio-supply = <&reg_ldo_io1>;
+	avdd-supply = <&reg_ldo_io1>;
+	firmware-name = "gsl1680-aeezo-u708hc.fw";
+	/*
+	 * The firmware reports a 960x640 space (measured edges 13..947 x 14..625). Inverting
+	 * both raw axes and swapping maps it onto the panel's native portrait 800x1280 frame.
+	 */
+	touchscreen-size-x = <960>;
+	touchscreen-size-y = <640>;
+	touchscreen-inverted-x;
+	touchscreen-inverted-y;
+	touchscreen-swapped-x-y;
+	status = "okay";
+};
+
+/* Gadget-only for bring-up: the frame shows up on the host as a USB serial console. */
+&usb_otg {
+	dr_mode = "peripheral";
+};
+
+&usbphy {
+	/delete-property/ usb0_id_det-gpios;
+};

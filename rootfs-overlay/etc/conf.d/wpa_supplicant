@@ -1,0 +1,2 @@
+rc_need="aic8800"
+wpa_supplicant_args="-i wlan0"

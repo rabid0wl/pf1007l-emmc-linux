@@ -1,0 +1,27 @@
+# Build trees and outputs: rebuild from the sources (see README)
+linux-*/
+u-boot/
+dl/
+rootfs/
+initramfs/*/
+initramfs-install/
+build-ums/
+*.cpio.gz
+*.uimg
+*.scr
+zImage*
+u-boot*.bin
+__pycache__/
+
+# Vendor blobs: extract them from YOUR frame's own Android backup, never commit them
+vendor/*.ko
+vendor/*.bin
+firmware/
+*.img
+*.img.zst
+*.fw
+build/
+tools/memdump
+# saved web pages (can carry your account name/address)
+*.html
+*_files/

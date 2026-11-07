@@ -1,0 +1,17 @@
+#!/sbin/openrc-run
+# Immich slideshow on the panel (/usr/local/lib/aeezo-frame/frame.py). Works offline from its
+# cache, so it only needs local filesystems; supervise-daemon respawns it if it dies.
+description="AEEZO photo frame slideshow"
+
+supervisor=supervise-daemon
+command=/usr/bin/python3
+command_args="/usr/local/lib/aeezo-frame/frame.py"
+output_log=/var/log/aeezo-frame.log
+error_log=/var/log/aeezo-frame.log
+respawn_delay=5
+respawn_max=0
+
+depend() {
+	need localmount
+	after networking aic8800 local
+}

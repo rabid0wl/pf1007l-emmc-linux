@@ -1,0 +1,6 @@
+#!/bin/sh
+# The built-in silead_ts driver probes at ~0.5s, before the rootfs (and /lib/firmware) is
+# mounted, and gives up with -ENOENT. Re-probe it once the filesystems are up. Harmless if it
+# already bound (e.g. a kernel with CONFIG_EXTRA_FIRMWARE): the bind write just fails.
+[ -e /sys/bus/i2c/drivers/silead_ts/0-0040 ] || echo 0-0040 > /sys/bus/i2c/drivers/silead_ts/bind 2>/dev/null
+exit 0

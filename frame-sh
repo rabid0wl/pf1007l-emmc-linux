@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+"""Run one shell command on the frame over the USB serial gadget and print its output.
+
+Usage: sudo ./frame-sh 'dmesg | tail'   (reads until an end marker, so pipes/quotes are safe)
+"""
+import os, sys, termios, time, select
+
+# the port number hops (ACM0/ACM1) when the host resets the gadget; take whichever exists
+dev = os.environ.get("FRAME_TTY") or next((d for d in ("/dev/ttyACM0", "/dev/ttyACM1", "/dev/ttyACM2")
+                                            if os.path.exists(d)), "/dev/ttyACM0")
+cmd = sys.argv[1]
+timeout = float(sys.argv[2]) if len(sys.argv) > 2 else 15
+marker = f"__END_{os.getpid()}__"
+
+fd = os.open(dev, os.O_RDWR | os.O_NOCTTY)
+attrs = termios.tcgetattr(fd)
+attrs[0] = attrs[1] = attrs[3] = 0          # raw: no iflag/oflag/lflag processing
+attrs[2] |= termios.CS8 | termios.CREAD | termios.CLOCAL
+# no HUPCL: dropping DTR on close hangs up the frame's shell; a hangup with output still
+# queued wedges the musb IN endpoint (gs_close WARN, then "request not queued to ep3in").
+attrs[2] &= ~termios.HUPCL
+termios.tcsetattr(fd, termios.TCSANOW, attrs)
+termios.tcflush(fd, termios.TCIOFLUSH)
+
+# stty -echo on the frame side keeps our own command out of the output
+# the empty quotes split the marker in the echoed command, so only real output matches
+split = marker.replace("_END_", '_END_""')
+os.write(fd, b"stty -echo 2>/dev/null\n")
+time.sleep(0.3)
+termios.tcflush(fd, termios.TCIFLUSH)
+os.write(fd, f"{{ {cmd}; }} 2>&1; echo; echo {split}\n".encode())
+buf, end = b"", time.time() + timeout
+while time.time() < end and marker.encode() not in buf:
+    r, _, _ = select.select([fd], [], [], 0.2)
+    if r:
+        buf += os.read(fd, 65536)
+out = buf.decode(errors="replace").replace("\r", "")
+out = out.split(marker)[0] if marker in out else out + "\n[frame-sh: timed out]"
+sys.stdout.write("\n".join(l for l in out.splitlines() if split not in l and not l.startswith("~ #")).strip() + "\n")

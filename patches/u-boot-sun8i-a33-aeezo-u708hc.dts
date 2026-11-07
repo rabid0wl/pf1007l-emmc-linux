@@ -1,0 +1,53 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * AEEZO 10.1" photo frame (YHK "A33-Tablet" U708HC), bootloader view only: eMMC, SD and
+ * the OTG port as a USB device (for `ums`). Display/touch live in the kernel's DTS.
+ */
+
+/dts-v1/;
+#include "sun8i-a33.dtsi"
+#include "sunxi-reference-design-tablet.dtsi"
+#include "sun8i-reference-design-tablet.dtsi"
+
+/ {
+	model = "AEEZO U708HC A33 Photo Frame";
+	compatible = "aeezo,u708hc", "allwinner,sun8i-a33";
+
+	aliases {
+		serial0 = &r_uart;
+	};
+};
+
+/* vendor card2_boot_para: 4-bit eMMC on PC5 (clk), PC6 (cmd), PC8-PC11 (d0-d3) */
+&mmc2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&mmc2_4bit_pins_aeezo>;
+	vmmc-supply = <&reg_dcdc1>;
+	bus-width = <4>;
+	non-removable;
+	status = "okay";
+};
+
+&pio {
+	mmc2_4bit_pins_aeezo: mmc2-4bit-pins-aeezo {
+		pins = "PC5", "PC6", "PC8", "PC9", "PC10", "PC11";
+		function = "mmc2";
+		drive-strength = <30>;
+		bias-pull-up;
+	};
+};
+
+/* vendor dcdc1_vol 3300 */
+&reg_dcdc1 {
+	regulator-min-microvolt = <3300000>;
+	regulator-max-microvolt = <3300000>;
+	regulator-name = "vcc-3v3";
+};
+
+&usb_otg {
+	dr_mode = "peripheral";
+};
+
+&usbphy {
+	/delete-property/ usb0_id_det-gpios;
+};

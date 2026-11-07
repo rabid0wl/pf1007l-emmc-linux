@@ -1,0 +1,16 @@
+--- a/drivers/mmc/host/sunxi-mmc.c
++++ b/drivers/mmc/host/sunxi-mmc.c
+@@ -1442,6 +1442,13 @@
+ 		goto error_free_dma;
+ 
+ 	/*
++	 * Some boards can't run their eMMC in DDR52 with the generic delay
++	 * chain values (AEEZO U708HC: reads hang right after the DDR switch).
++	 */
++	if (of_property_read_bool(pdev->dev.of_node, "allwinner,no-ddr"))
++		mmc->caps &= ~(MMC_CAP_1_8V_DDR | MMC_CAP_3_3V_DDR);
++
++	/*
+ 	 * If we don't support delay chains in the SoC, we can't use any
+ 	 * of the higher speed modes. Mask them out in case the device
+ 	 * tree specifies the properties for them, which gets added to

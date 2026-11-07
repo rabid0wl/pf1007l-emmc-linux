@@ -1,0 +1,68 @@
+--- a/drivers/mmc/sunxi_mmc.c
++++ b/drivers/mmc/sunxi_mmc.c
+@@ -581,6 +581,9 @@
+ 		cfg->host_caps = MMC_MODE_8BIT;
+ 
+ 	cfg->host_caps |= MMC_MODE_HS_52MHz | MMC_MODE_HS;
++	if (IS_ENABLED(CONFIG_MMC_SUNXI_EXTRA_4BIT_LEGACY) &&
++	    sdc_no == CONFIG_MMC_SUNXI_SLOT_EXTRA)
++		cfg->host_caps = MMC_MODE_4BIT;
+ 	cfg->b_max = CONFIG_SYS_MMC_MAX_BLK_COUNT;
+ 
+ 	cfg->f_min = 400000;
+@@ -596,6 +599,12 @@
+ 
+ #ifdef CONFIG_SUNXI_GEN_SUN6I
+ 	/* unassert reset */
++	/*
++	 * Pulse the controller reset, as Linux does: a previous stage (e.g. a vendor boot0 that
++	 * fell back to FEL) can leave the controller configured, and a bare de-assert keeps that.
++	 */
++	clrbits_le32(ccm + CCU_AHB_RESET0_CFG, 1 << AHB_RESET_OFFSET_MMC(sdc_no));
++	udelay(10);
+ 	setbits_le32(ccm + CCU_AHB_RESET0_CFG, 1 << AHB_RESET_OFFSET_MMC(sdc_no));
+ #endif
+ #if defined(CONFIG_MACH_SUN9I)
+@@ -707,6 +716,9 @@
+ 	ccu_reg = (u32 *)(uintptr_t)ofnode_get_addr(args.node);
+ 
+ 	priv->mmc_no = ((uintptr_t)priv->reg - SUNXI_MMC0_BASE) / 0x1000;
++	if (IS_ENABLED(CONFIG_MMC_SUNXI_EXTRA_4BIT_LEGACY) &&
++	    priv->mmc_no == CONFIG_MMC_SUNXI_SLOT_EXTRA)
++		cfg->host_caps &= ~(MMC_MODE_HS_52MHz | MMC_MODE_HS);
+ 	priv->mclkreg = (void *)ccu_reg + get_mclk_offset() + priv->mmc_no * 4;
+ 
+ 	ret = clk_get_by_name(dev, "ahb", &gate_clk);
+@@ -714,8 +726,12 @@
+ 		clk_enable(&gate_clk);
+ 
+ 	ret = reset_get_bulk(dev, &reset_bulk);
+-	if (!ret)
++	if (!ret) {
++		/* pulse, don't just de-assert: see sunxi_mmc_init() */
++		reset_assert_bulk(&reset_bulk);
++		udelay(10);
+ 		reset_deassert_bulk(&reset_bulk);
++	}
+ 
+ 	ret = mmc_set_mod_clk(priv, 24000000);
+ 	if (ret)
+--- a/arch/arm/mach-sunxi/Kconfig
++++ b/arch/arm/mach-sunxi/Kconfig
+@@ -932,6 +932,16 @@
+ 	  slot or emmc on mmc1 - mmc3. Setting this to 1, 2 or 3 will enable
+ 	  support for this.
+ 
++config MMC_SUNXI_EXTRA_4BIT_LEGACY
++	bool "Extra mmc slot: 4-bit bus, legacy timing only"
++	depends on MMC_SUNXI_SLOT_EXTRA != -1
++	help
++	  For boards whose eMMC on the extra slot is wired 4-bit and stops
++	  answering status polls (CMD13) right after the HS_TIMING switch,
++	  because the MMC core polls before the host has re-timed its
++	  sampling. Keeps that slot at 4-bit legacy timing (~25MHz) in both
++	  SPL and U-Boot proper. Seen on the AEEZO U708HC (A33) photo frame.
++
+ config I2C0_ENABLE
+ 	bool "Enable I2C/TWI controller 0"
+ 	default y if MACH_SUN4I || MACH_SUN5I || MACH_SUN7I || MACH_SUN8I_R40

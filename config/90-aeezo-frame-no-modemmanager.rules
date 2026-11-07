@@ -1,0 +1,4 @@
+# AEEZO frame bring-up gadgets (g_multi, g_serial): not modems, not networks. Stops ModemManager typing AT
+# probes into the frame's root shell, and NetworkManager pushing DHCP over the gadget ethernet.
+ATTRS{idVendor}=="1d6b", ATTRS{idProduct}=="0104", ENV{ID_MM_DEVICE_IGNORE}="1", ENV{NM_UNMANAGED}="1"
+ATTRS{idVendor}=="0525", ATTRS{idProduct}=="a4a7", ENV{ID_MM_DEVICE_IGNORE}="1", ENV{NM_UNMANAGED}="1"

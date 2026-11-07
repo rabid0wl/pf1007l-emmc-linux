@@ -1,0 +1,52 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Camera presence probe for the AEEZO U708HC. Not for daily use.
+ *
+ * Vendor csi0 (script.bin, vip_used = 0): gc2035 template on parallel CSI PE0-PE11, twi2 @0x3c,
+ * pwdn PE15 (high = off), reset PE16 (low = reset), iovdd dldo3 2.8V, avdd ldo_io0 2.8V,
+ * dvdd eldo2 1.8V. This powers the rails, enables i2c2 and routes CSI MCLK to PE1. The CCU
+ * csi-mclk clock has no consumer here, so the probe script gates it on by hand.
+ */
+
+#include "sun8i-a33-aeezo-u708hc.dts"
+
+/ {
+	model = "AEEZO U708HC A33 Photo Frame (camera probe)";
+};
+
+&i2c2 {
+	clock-frequency = <100000>;
+	status = "okay";
+};
+
+&pio {
+	pinctrl-names = "default";
+	pinctrl-0 = <&csi_mclk_pin_aeezo>;
+
+	csi_mclk_pin_aeezo: csi-mclk-pin-aeezo {
+		pins = "PE1";
+		function = "csi";
+	};
+};
+
+&reg_dldo3 {
+	regulator-always-on;
+	regulator-min-microvolt = <2800000>;
+	regulator-max-microvolt = <2800000>;
+	regulator-name = "vcc-csi-io";
+};
+
+&reg_eldo2 {
+	regulator-always-on;
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	regulator-name = "vcc-csi-core";
+};
+
+&reg_ldo_io0 {
+	regulator-always-on;
+	regulator-min-microvolt = <2800000>;
+	regulator-max-microvolt = <2800000>;
+	regulator-name = "vcc-csi-analog";
+	status = "okay";
+};

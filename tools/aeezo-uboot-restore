@@ -1,0 +1,14 @@
+#!/bin/sh
+# Put U-Boot back at 8KiB of the eMMC user area (undoes the "FEL switch", which blanks it so the
+# ROM drops to FEL instead of booting the eMMC). Read-back verified.
+set -e
+ub=/usr/share/aeezo/u-boot-sunxi-with-spl.bin
+emmc=
+for b in /sys/block/mmcblk?; do [ "$(cat $b/device/name 2>/dev/null)" = MAG2GC ] && emmc=/dev/${b##*/}; done
+[ -n "$emmc" ] || { echo "eMMC (MAG2GC) not found" >&2; exit 1; }
+[ "$(( $(cat /sys/block/${emmc#/dev/}/size) * 512 ))" = 15634268160 ] || { echo "$emmc: wrong size" >&2; exit 1; }
+dd if=$ub of=$emmc bs=1024 seek=8 conv=fsync 2>/dev/null
+sync; echo 3 > /proc/sys/vm/drop_caches; blockdev --flushbufs $emmc
+sz=$(wc -c < $ub)
+dd if=$emmc bs=1024 skip=8 count=$(( (sz + 1023) / 1024 )) 2>/dev/null | head -c $sz | cmp -s - $ub
+echo "U-Boot restored on $emmc at 8KiB ($sz bytes), read back OK"
