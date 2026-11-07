@@ -6,7 +6,10 @@ small Android 6 tablet. This repo replaces that Android with ordinary, current L
 kernel and bootloader everyone else uses, not a vendor fork), installed on the frame's own
 internal storage. No SD card, no Android, no vendor cloud app.
 
-<!-- TODO: photo of the frame booting / showing the install screen (NOT the chore board) -->
+![The frame on mainline Linux, showing a household chore board (names blurred)](docs/images/frame-board.jpg)
+
+*My frame's everyday screen: a chore board for our house, served from a home server. The board is
+a separate project and isn't in this repo; what's here is everything underneath it.*
 
 ## How this got built
 
@@ -41,6 +44,11 @@ the internal storage, and it fought back four different ways:
 4. The chip has a hidden boot area that still held the factory bootloader, and the processor
    kept running that instead of ours.
 
+![An early install attempt: the installer passes its first checks, then the eMMC starts throwing write errors](docs/images/emmc-install-errors.jpg)
+
+*An early install attempt. The installer passed its first checks, then the storage chip started
+refusing writes.*
+
 Each of those has a fix in this repo, and they may help other cheap Allwinner devices too.
 
 ## Want to try it?
@@ -59,8 +67,7 @@ backups and everything Android-side.
 ## What's not in here
 
 No vendor files. You pull the couple you need from your own frame's backup, and the scripts to do
-that are included. My frame's everyday screen is a household chore board. That's a separate
-project and may get its own repo someday.
+that are included. The chore board in the photo may get its own repo someday.
 
 ## Credits
 
