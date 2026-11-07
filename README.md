@@ -33,8 +33,12 @@ a spot for one.
 ## What's new here
 
 Plenty of people already run Linux on this frame, all from a microSD card, and every one of them
-leaves the internal storage alone (links in [AGENTS.md](AGENTS.md#prior-art)). The hard part was
-the internal storage, and it fought back four different ways:
+leaves the internal storage alone (links in [AGENTS.md](AGENTS.md#prior-art)). That's the sensible
+default: pull the card and Android comes back. Going to the internal storage was my choice, because I
+was done with Android and wanted an appliance with no card to fall out or wear out. If you might
+want Android back someday, use one of the SD-card projects instead.
+
+The internal storage was also the hard part, and it fought back four different ways:
 
 1. The USB connection choked on big transfers, so the installer had to carry the whole system in
    memory and write it from there.
