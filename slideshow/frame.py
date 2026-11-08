@@ -115,9 +115,25 @@ class Immich:
             match = [a for a in albums if a.get("albumName") == name]
             if not match:
                 raise LookupError(f"no album named {name!r}")
-            assets = json.loads(self._req("GET", f"/api/albums/{match[0]['id']}")).get("assets", [])
+            assets = self.album_assets(match[0]["id"])
+            if not assets:
+                raise LookupError(f"album {name!r} has no images")  # logged + backoff, not a silent empty fetch
             return random.sample(assets, min(n, len(assets)))
         raise ValueError(f"unknown SOURCE {source!r}")
+
+    def album_assets(self, album_id, page_size=1000, max_pages=50):
+        # Immich v3 dropped the `assets` array from GET /api/albums/{id}; album contents now come
+        # from POST /api/search/metadata, paged (nextPage is a string page number, null at the end).
+        out, page = [], 1
+        for _ in range(max_pages):
+            res = json.loads(self._req("POST", "/api/search/metadata",
+                                       {"albumIds": [album_id], "type": "IMAGE", "size": page_size, "page": page}))
+            out += res["assets"]["items"]
+            nxt = res["assets"].get("nextPage")
+            if not nxt:
+                break
+            page = int(nxt)
+        return out
 
     def preview(self, asset_id):
         return self._req("GET", f"/api/assets/{urllib.parse.quote(asset_id)}/thumbnail?size=preview", timeout=60)
